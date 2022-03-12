@@ -81,6 +81,9 @@ class Server(Directive):
         self.block = new_block
         self._directive.block = self.block
 
+    def replace_location(self, pattern: str, *directives: list[Directive]):
+        self.locations = [l if l.args[0] != pattern else location(pattern, *directives) for l in self.locations]
+
 
 
 @dataclass
