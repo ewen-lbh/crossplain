@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "Small layer on top of crossplane that uses plain Python objects instead of dicts. Includes intuitive ways to modify the config."
 authors = ["Ewen Le Bihan <hey@ewen.works>"]
 license = "MIT"
+repository = "https://github.com/ewen-lbh/crossplain"
+readme = "README.md"
+homepage = "https://ewen.works/crossplain"
 
 [tool.poetry.dependencies]
 python = "^3.10"
