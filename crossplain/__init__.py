@@ -1,7 +1,8 @@
+from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
 from typing import Callable
-from dataclasses import dataclass
+
 import crossplane
 from rich import print
 
@@ -182,56 +183,3 @@ def _instanciate_directive(directive: dict) -> Directive:
         d.block = list(map(_instanciate_directive, directive["block"]))
 
     return d
-
-
-if __name__ == "__main__":
-    p = parse(Path(__file__).parent / ".." / "in" / "nginx.conf")["local.conf"]
-
-    for name, port in product(
-        ("fr.ewen.works", "en.ewen.works", "ewen.works", "schoolsyst.com"), (80, 443)
-    ):
-        server = p.server(name, port)
-        server.block += [error_page(404, "404.html"), error_page(500, "500.html")]
-        server.locations = [
-            location("/", try_files("$uri", "$uri.html", "$uri/", "=404"))
-        ] + server.locations
-
-    for name, port in product(("assets.ewen.works", "media.ewen.works"), (443, 80)):
-        server = p.server(name, port)
-        server.block += [
-            add_header("Access-Control-Allow-Origin", "*"),
-            location(
-                "/",
-                autoindex(),
-                autoindex_format("xml"),
-                xslt_stylesheet("/home/user-data/www/superbindex.xslt"),
-                types(
-                    {
-                        "text/plain": [
-                            "indentex",
-                            "tex",
-                            "txt",
-                            "json",
-                            "yaml",
-                            "yml",
-                            "toml",
-                        ]
-                    }
-                ),
-            ),
-        ]
-
-    p.server("ewen.works", 443).locations = [
-        location(
-            "/",
-            _if(
-                "$http_accept_language ~* ^fr",
-                _return(301, "https://fr.ewen.works$request_uri"),
-            ),
-            _return(301, "https://en.ewen.works$request_uri"),
-        )
-    ]
-
-    (Path(__file__).parent / "example" / "out" / "local.conf").write_text(p.build())
-
-    input()
