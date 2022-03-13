@@ -81,9 +81,10 @@ class Server(Directive):
         self._directive.block = self.block
 
     def replace_location(self, pattern: str, *directives: list[Directive], add_if_absent: bool = False):
-        self.locations = [l if l.args[0] != pattern else location(pattern, *directives) for l in self.locations]
+        new_location = Directive(name="location", args=[pattern], block=directives)
+        self.locations = [l if l.args[0] != pattern else new_location for l in self.locations]
         if pattern not in [l.args[0] for l in self.locations] and add_if_absent:
-            self.locations += location(pattern, *directives)
+            self.locations += [new_location]
 
 
 
