@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Callable
 
 import crossplane
-from rich import print
 
 # def DirectiveNamed(name: str) -> Type[NamedTuple]:
 #     return NamedTuple(name, line=int)
