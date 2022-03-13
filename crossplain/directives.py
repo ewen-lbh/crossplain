@@ -1,9 +1,10 @@
 from crossplain import Directive
 
+
 def location(path_pattern: str, *directives) -> Directive:
     return Directive(
         name="location",
-        args=[path_pattern],
+        args=path_pattern.split(" "),
         block=list(directives),
     )
 
