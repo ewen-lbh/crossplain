@@ -3,6 +3,11 @@ from itertools import product
 from pathlib import Path
 from typing import Callable
 
+try:
+    from rich import print
+except ImportError:
+    pass
+
 import crossplane
 
 # def DirectiveNamed(name: str) -> Type[NamedTuple]:
@@ -54,6 +59,37 @@ class Directive:
                 do(i, d)
                 d.walk(do)
 
+    @property
+    def args_str(self) -> str:
+        return " ".join(map(str, self.args))
+
+
+def _without(directive_name: str, directives: list[Directive]) -> list[Directive]:
+    return [d for d in directives if d.name != directive_name]
+
+
+def _index_of_first(directive_name: str, directives: list[Directive]) -> int:
+    for i, d in enumerate(directives):
+        if d.name == directive_name:
+            return i
+    return None
+
+
+def _index_of_last(directive_name: str, directives: list[Directive]) -> int:
+    matches = [i for i, d in enumerate(directives) if d.name == directive_name]
+    if len(matches):
+        return matches[-1]
+    return None
+
+
+def _index_of(
+    predicate: Callable[[Directive], bool], directives: list[Directive]
+) -> int:
+    for i, d in enumerate(directives):
+        if predicate(d):
+            return i
+    return None
+
 
 @dataclass
 class Server(Directive):
@@ -67,25 +103,78 @@ class Server(Directive):
 
     @locations.setter
     def locations(self, locations: list[Directive]):
-        new_block = []
-        current_location_directive_index = 0
-        for directive in self.block:
-            if directive.name == "location" and current_location_directive_index < len(
-                locations
-            ):
-                new_block.append(locations[current_location_directive_index])
-                current_location_directive_index += 1
-            else:
-                new_block.append(directive)
-        self.block = new_block
+        first_location_was_at = _index_of_first("location", self.block) or 0
+        self.block = (
+            self.block[:first_location_was_at]
+            + locations
+            + _without("location", self.block[first_location_was_at:])
+        )
         self._directive.block = self.block
 
-    def replace_location(self, pattern: str, *directives: list[Directive], add_if_absent: bool = False):
+    def set_location(self, pattern: str, *directives: list[Directive]):
         new_location = Directive(name="location", args=[pattern], block=directives)
-        self.locations = [l if l.args[0] != pattern else new_location for l in self.locations]
-        if pattern not in [l.args[0] for l in self.locations] and add_if_absent:
-            self.locations += [new_location]
 
+        if pattern not in [l.args_str for l in self.locations]:
+            self.block.insert(
+                (_index_of_last("location", self.block) or -1) + 1, new_location
+            )
+            self._directive.block = self.block
+        else:
+            self.locations = [
+                l if l.args_str != pattern else new_location for l in self.locations
+            ]
+
+    @property
+    def headers(self) -> list[Directive]:
+        return [h for h in self.block if h.name == "add_header"]
+
+    @headers.setter
+    def headers(self, headers: list[Directive]):
+        first_header_was_at = _index_of_first("add_header", self.block) or 0
+        self.block = (
+            self.block[:first_header_was_at]
+            + headers
+            + _without("add_header", self.block[first_header_was_at:])
+        )
+        self._directive.block = self.block
+
+    def set_header(self, header: str, value: str):
+        new_header = Directive(name="add_header", args=[header, value])
+        if header not in [h.args_str for h in self.headers]:
+            self.block.insert(
+                (_index_of_last("add_header", self.block) or -1) + 1, new_header
+            )
+            self._directive.block = self.block
+        else:
+            self.headers = [
+                h if h.args_str != header else new_header for h in self.headers
+            ]
+
+    @property
+    def error_pages(self) -> list[Directive]:
+        return [e for e in self.block if e.name == "error_page"]
+
+    @error_pages.setter
+    def error_pages(self, error_pages: list[Directive]):
+        first_error_page_was_at = _index_of_first("error_page", self.block) or 0
+        self.block = (
+            self.block[:first_error_page_was_at]
+            + error_pages
+            + _without("error_page", self.block[first_error_page_was_at:])
+        )
+        self._directive.block = self.block
+
+    def set_error_page(self, code: int, url: str):
+        new_error_page = Directive(name="error_page", args=[str(code), url])
+        if code not in [e.args_str for e in self.error_pages]:
+            self.block.insert(
+                (_index_of_last("error_page", self.block) or -1) + 1, new_error_page
+            )
+            self._directive.block = self.block
+        else:
+            self.error_pages = [
+                e if e.args_str != code else new_error_page for e in self.error_pages
+            ]
 
 
 @dataclass
