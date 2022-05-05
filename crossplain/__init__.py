@@ -1,14 +1,12 @@
+import contextlib
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
 from typing import Callable
-
-try:
-    from rich import print
-except ImportError:
-    pass
-
 import crossplane
+
+with contextlib.suppress(ImportError):
+    from rich import print
 
 # def DirectiveNamed(name: str) -> Type[NamedTuple]:
 #     return NamedTuple(name, line=int)
@@ -62,6 +60,9 @@ class Directive:
     @property
     def args_str(self) -> str:
         return " ".join(map(str, self.args))
+    
+    def __eq__(self, __o: object) -> bool:
+        return self.__dict__ == __o.__dict__
 
 
 def _without(directive_name: str, directives: list[Directive]) -> list[Directive]:
@@ -94,7 +95,7 @@ def _index_of(
 @dataclass
 class Server(Directive):
     def __init__(self, _directive=None, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(**({"name": "server", "args": [], "block": []} | kwargs))
         self._directive = _directive
 
     @property
@@ -136,19 +137,26 @@ class Server(Directive):
             + headers
             + _without("add_header", self.block[first_header_was_at:])
         )
-        self._directive.block = self.block
+        if self._directive:
+            self._directive.block = self.block
 
     def set_header(self, header: str, value: str):
         new_header = Directive(name="add_header", args=[header, value])
-        if header not in [h.args_str for h in self.headers]:
-            self.block.insert(
-                (_index_of_last("add_header", self.block) or -1) + 1, new_header
-            )
-            self._directive.block = self.block
+        if header not in [h.args[0] for h in self.headers]:
+            self.add_header(header, value)
         else:
             self.headers = [
-                h if h.args_str != header else new_header for h in self.headers
+                h if h.args[0] != header else new_header for h in self.headers
             ]
+    
+    def add_header(self, header: str, value: str):
+        new_header = Directive(name="add_header", args=[header, value])
+        self.block.insert(
+            (_index_of_last("add_header", self.block) or -1) + 1, new_header
+        )
+        if self._directive:
+            self._directive.block = self.block
+    
 
     @property
     def error_pages(self) -> list[Directive]:
@@ -194,7 +202,7 @@ class ConfigurationFile:
         return crossplane.build(self.dict()["parsed"])
 
     def server(self, name: str, port: int) -> Server:
-        for i, d in enumerate(self.directives):
+        for d in self.directives:
             if (
                 d.name == "server"
                 and name == [s.args[0] for s in d.block if s.name == "server_name"][0]
