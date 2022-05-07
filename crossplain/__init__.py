@@ -200,6 +200,15 @@ class ConfigurationFile:
 
     def build(self) -> str:
         return crossplane.build(self.dict()["parsed"])
+    
+    def add_server(self, name: str, port: int, *directives: Directive) -> Server:
+        new_server = Server(
+            args=[name, str(port)],
+            block=list(directives),
+        )
+
+        self.directives.append(new_server)
+        return new_server
 
     def server(self, name: str, port: int) -> Server:
         for d in self.directives:
