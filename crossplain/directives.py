@@ -63,3 +63,7 @@ def return_(code: int, url: str) -> Directive:
 
 def comment(text: str) -> Directive:
     return Directive(name="#", args=[], comment=" " + text)
+
+
+def proxy_pass(url: str) -> Directive:
+    return Directive(name="proxy_pass", args=[url])
