@@ -1,4 +1,5 @@
 from crossplain import Directive
+from crossplain.utils import split_expression
 
 
 def location(path_pattern: str, *directives) -> Directive:
@@ -53,7 +54,7 @@ def types(typesmap: dict[str, str | list[str]]) -> Directive:
 
 
 def if_(condition: str, *directives) -> Directive:
-    return Directive(name="if", args=condition.split(" "), block=list(directives))
+    return Directive(name="if", args=split_expression(condition), block=list(directives))
 
 
 def return_(code: int, url: str) -> Directive:
