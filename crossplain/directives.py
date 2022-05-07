@@ -57,8 +57,13 @@ def if_(condition: str, *directives) -> Directive:
     return Directive(name="if", args=split_expression(condition), block=list(directives))
 
 
-def return_(code: int, url: str) -> Directive:
-    return Directive(name="return", args=[str(code), url])
+def return_(code: int, url_or_text: str = "") -> Directive:
+    return Directive(name="return", args=(
+        [str(code), url_or_text] if url_or_text and code 
+        else [str(code)] 
+        if code 
+        else [url_or_text]
+    ))
 
 
 def comment(text: str) -> Directive:
